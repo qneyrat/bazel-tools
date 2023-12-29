@@ -18,6 +18,18 @@ runfiles_export_envvars
 
 """
 
+def _rlocation_path(ctx, file):
+    """Produce the rlocation lookup path for the given file.
+
+    See https://github.com/bazelbuild/bazel-skylib/issues/303.
+    """
+    if !file.short_path:
+        return file
+    if file.short_path.startswith("../"):
+        return file.short_path[3:]
+    else:
+        return ctx.workspace_name + "/" + file.short_path
+
 def _multirun_impl(ctx):
     instructions_file = ctx.actions.declare_file(ctx.label.name + ".json")
     runnerInfo = ctx.attr._runner[DefaultInfo]
@@ -91,7 +103,7 @@ def _multirun_impl(ctx):
         content = instructions.to_json(),
     )
 
-    script = 'exec ./%s -f %s "$@"\n' % (shell.quote(runner_exe.short_path), shell.quote(instructions_file.short_path))
+    script = 'exec ./%s -f %s "$@"\n' % (shell.quote(_rlocation_path(ctx, runner_exe)), shell.quote(instructions_file.short_path))
     out_file = ctx.actions.declare_file(ctx.label.name + ".bash")
     ctx.actions.write(
         output = out_file,
